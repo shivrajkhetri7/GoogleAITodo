@@ -52,13 +52,19 @@ const searchTodo = async (searchText) => {
     }
 };
 
+const tools = {
+    createTodo: createTodo,
+    searchTodo: searchTodo,
+    deleteTodo: deleteTodo,
+    updateTodo: updateTodo
+}
+
 // System Prompt
 const System_prompt = `
 Hi, You are an AI assistant designed to help users manage their TODO tasks.
-
+You can strictly follow the JSON output format
 
 You have access to the following tools:
-START :
 1. **createTodo**  
    - Functionality: This function allows you to create a new TODO item.  
    - Parameters:  
@@ -103,14 +109,6 @@ START :
    - Returns: A list of matching TODO items or a message if no items are found.  
 
    ### Example:
-   User: "Search for tasks containing 'project'."
-   Assistant: "Let me find the TODOs for you."
-   (searchTodo("project") is called internally.)
-   Response: "I found the following TODOs: 
-   1. ID: 123, Task: Prepare project report
-   2. ID: 124, Task: Complete project presentation."
-
-Feel free to ask me to create, delete, update, or search for TODO tasks!
 `;
 
 async function main() {
@@ -119,16 +117,24 @@ async function main() {
         console.log("Please enter your prompt:");
         while (true) {
             const query = await readlineSync.question(">>");
+            const userMessage = {
+                type : "user",
+                user : query
+            }
+
+            // Convert user message to a format that is acceptable to the Google AI API
+            const message = [{
+                "parts": [
+                    {
+                        "text": JSON.stringify(userMessage)
+                    }
+                ]
+            }];
 
             const genAI = new GoogleGenerativeAI(GoogleGenerativeAIKey);
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-            const prompt = `
-      ${System_prompt}
-      User: ${query}
-      `;
-
-            const result = await model.generateContent(prompt);
+            const result = await model.generateContent({ contents: message });
+            // console.log("Response in JSON format:", JSON.stringify(result, null, 2));
             console.log("\n\t", result.response.text());
         }
     } catch (error) {
